@@ -1,3 +1,5 @@
+#import <UIKit/UIKit.h>
+
 enum {
     BTN_0 = 0,
     BTN_1 = 1,
@@ -38,5 +40,9 @@ enum {
     BTN_INVERSETANGENT = 36,
     BTN_RANDOM = 37,
     BTN_TRIGUNITSSWITCHER = 38,
-    BTN_BACK = 39
+    BTN_BACK = 39,
+    BTN_OPENPAREN = 40,
+    BTN_CLOSEPAREN = 41,
+    BTN_DELETE = 42,
+    BTN_HISTORY = 43
 };

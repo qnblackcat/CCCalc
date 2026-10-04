@@ -1,3 +1,5 @@
+#import <UIKit/UIKit.h>
+
 @interface TPNumberPadDarkStyleButton : UIControl
 -(id)initForCharacter:(unsigned)arg1;
 -(id)subviews;
@@ -17,6 +19,7 @@
 + (CGRect)circleBounds;
 + (NSString *)textForButtonID:(unsigned)identifier;
 + (UIImage *)textToImage:(NSString *)text;
++ (UIImage *)symbolToImage:(NSString *)name;
 - (void)setFrame:(CGRect)frame;
 - (void)setImage:(UIImage *)image;
 - (void)highlightCircleView:(BOOL)highlight animated:(BOOL)animated;

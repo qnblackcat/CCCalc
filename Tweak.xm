@@ -7,14 +7,19 @@
 %property (assign) BOOL shouldStayHighlighted;
 
 + (id)imageForCharacter:(unsigned)character {
-	if(character == BTN_MULTIPLY || character == BTN_NEGATE || character == BTN_BACK) {
-		NSBundle *bundle = [[NSBundle alloc] initWithPath:@"/Library/MobileSubstrate/DynamicLibraries/ai.paisseon.cccalc.bundle"];
-		if(character == BTN_BACK)
-			return [UIImage imageWithContentsOfFile:[bundle pathForResource:@"back" ofType:@"png"]];
-		else
-			return [UIImage imageWithContentsOfFile:[bundle pathForResource:(character == BTN_MULTIPLY ? @"multiply" : @"plus-minus") ofType:@"png"]];
+	if(character == BTN_MULTIPLY)
+		return [CCCalcFunction imageFromBundle:@"multiply"];
+	else if(character == BTN_NEGATE)
+		return [CCCalcFunction imageFromBundle:@"plus-minus"];
+	else if(character == BTN_BACK)
+		return [CCCalcFunction imageFromBundle:@"back"];
+	else if(character == BTN_DELETE) {
+		return [[self class] symbolToImage:@"delete.left"];
 	}
-	else if(character >= 20) {
+	else if(character == BTN_HISTORY) {
+		return [[self class] symbolToImage:@"clock.arrow.circlepath"];
+	}
+	else if(CCCalcFunction.functions[@(character)]) {
 		//function buttons
 		return [CCCalcFunction.functions[@(character)] image];
 	}
@@ -31,6 +36,17 @@
 	[label setText:text];
 
 	return [label performSelector:@selector(_image)];
+}
+
+%new + (UIImage *)symbolToImage:(NSString *)name {
+	//Draws an SF Symbol centered on the same 75x75 canvas as textToImage:
+	UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightSemibold];
+	UIImage *symbol = [[UIImage systemImageNamed:name withConfiguration:configuration] imageWithTintColor:[UIColor whiteColor] renderingMode:UIImageRenderingModeAlwaysOriginal];
+	CGSize canvas = CGSizeMake(75, 75);
+
+	return [[[UIGraphicsImageRenderer alloc] initWithSize:canvas] imageWithActions:^(UIGraphicsImageRendererContext *context) {
+		[symbol drawAtPoint:CGPointMake((canvas.width - symbol.size.width) / 2.0, (canvas.height - symbol.size.height) / 2.0)];
+	}];
 }
 
 - (void)setFrame:(CGRect)frame {
@@ -52,7 +68,7 @@
 }
 
 + (CGRect)circleBounds {
-	return CGRectMake(0,0,65,65);
+	return CGRectMake(0,0,60,60);
 }
 
 - (void)setGlyphLayer:(CALayer *)layer {
@@ -92,6 +108,10 @@
 				return @"=";
 			case BTN_DECIMAL:
 				return @".";
+			case BTN_OPENPAREN:
+				return @"(";
+			case BTN_CLOSEPAREN:
+				return @")";
 			default:
 				return @"?";
 		}
@@ -120,11 +140,10 @@
 
 @implementation CCCalcViewController
 static CGRect _circleBounds = [%c(CCCalcButton) circleBounds];
-static UIImage *clearC;
-static UIImage *clearAC;
 
-static int _buttonsGrid[4][4] = {
-	{ BTN_CLEAR,	BTN_NEGATE, BTN_PERCENT, 	BTN_DIVIDE },
+static int _buttonsGrid[5][4] = {
+	{ BTN_NEGATE,		BTN_CLEAR,		BTN_DELETE,		BTN_HISTORY },
+	{ BTN_OPENPAREN,	BTN_CLOSEPAREN,	BTN_PERCENT,	BTN_DIVIDE },
 	{ BTN_7, 		BTN_8, 		BTN_9, 			BTN_MULTIPLY },
 	{ BTN_4, 		BTN_5, 		BTN_6, 			BTN_SUBTRACT },
 	{ BTN_1, 		BTN_2, 		BTN_3, 			BTN_ADD }
@@ -151,11 +170,19 @@ static int _functionsGrid[5][4] = {
 		[_displayView setText:@"0"];
 
 		_scrollView = [[CCCalcScrollView alloc] initWithPageSize:size];
-		_pageOne = [[CCCalcPage alloc] initWithCircleBounds:_circleBounds columns:4 rows:5];
+		_pageOne = [[CCCalcPage alloc] initWithCircleBounds:_circleBounds columns:4 rows:6];
 		_pageTwo = [[CCCalcPage alloc] initWithCircleBounds:_circleBounds columns:4 rows:5];
 		[_scrollView addPage:_pageOne];
 		[_scrollView addPage:_pageTwo];
 		[_scrollView setDelegate:self];
+
+		_historyView = [[CCCalcHistoryView alloc] init];
+		[_historyView setHidden:YES];
+		[_scrollView addSubview:_historyView];
+		__weak CCCalcViewController *weakSelf = self;
+		[_historyView setCloseHandler:^{
+			[weakSelf hideHistory];
+		}];
 
 		_brain = [[CCCalcBrain alloc] init];
 	}
@@ -174,14 +201,12 @@ static int _functionsGrid[5][4] = {
 	if(!_didLayout) {
 		[self initButtons];
 		[self layoutButtons];
-		clearC = [%c(CCCalcButton) textToImage:@"C"];
-		clearAC = [%c(CCCalcButton) textToImage:@"AC"];
 		_didLayout = YES;
 	}
 }
 
 - (void)initButtons {
-	for(int i = 0; i <= 39; i++) {
+	for(int i = 0; i <= BTN_HISTORY; i++) {
 		if(i == 13)
 			continue;
 
@@ -192,28 +217,55 @@ static int _functionsGrid[5][4] = {
 }
 
 - (void)layoutButtons {
-	for(int row = 0; row <= 3; row++)
+	for(int row = 0; row <= 4; row++)
 		for(int column = 0; column <= 3; column++)
 			[_pageOne addButton:self.buttons[@(_buttonsGrid[row][column])] atColumn:column row:row];
 
-	[_pageOne addButton:self.buttons[@(BTN_DECIMAL)] atColumn:2 row:4];
-	[_pageOne addButton:self.buttons[@(BTN_EQUAL)] atColumn:3 row:4];
+	[_pageOne addButton:self.buttons[@(BTN_DECIMAL)] atColumn:2 row:5];
+	[_pageOne addButton:self.buttons[@(BTN_EQUAL)] atColumn:3 row:5];
 	[_pageOne addSubview:self.buttons[@(BTN_0)]];
-	[self.buttons[@(BTN_0)] setFrame:CGRectMake([_pageOne column:0], [_pageOne row:4], [_pageOne column:1] + _circleBounds.size.width - ((double)[self view].frame.size.width / 4.0f - _circleBounds.size.width)/2.0f, _circleBounds.size.height)];
+	[self.buttons[@(BTN_0)] setFrame:CGRectMake([_pageOne column:0], [_pageOne row:5], [_pageOne column:1] + _circleBounds.size.width - ((double)[self view].frame.size.width / 4.0f - _circleBounds.size.width)/2.0f, _circleBounds.size.height)];
 
 	for(int row = 0; row <= 4; row++)
 		for(int column = 0; column <= 3; column++)
 			[_pageTwo addButton:self.buttons[@(_functionsGrid[row][column])] atColumn:column row:row];
 }
 
+- (void)showHistory {
+	[_historyView reload];
+	[_historyView setFrame:CGRectMake(_scrollView.contentOffset.x, 0, _pageOne.frame.size.width, _pageOne.frame.size.height)];
+	[_scrollView setScrollEnabled:NO];
+
+	[UIView transitionWithView:_scrollView duration:0.2 options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
+		[_pageOne setHidden:YES];
+		[_pageTwo setHidden:YES];
+		[_historyView setHidden:NO];
+	} completion:nil];
+}
+
+- (void)hideHistory {
+	if([_historyView isHidden])
+		return;
+
+	[_scrollView setScrollEnabled:YES];
+
+	[UIView transitionWithView:_scrollView duration:0.2 options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
+		[_pageOne setHidden:NO];
+		[_pageTwo setHidden:NO];
+		[_historyView setHidden:YES];
+	} completion:nil];
+}
+
 - (void)buttonTapped:(unsigned)identifier {
+	if(identifier == BTN_HISTORY) {
+		[self showHistory];
+		return;
+	}
+
 	[_brain evaluateTap:identifier];
 	[[self displayView] setText:[_brain currentValueWithCommas]];
-
-	if([_brain displayingAC])
-		[_buttons[@(BTN_CLEAR)] setImage:clearAC];
-	else
-		[_buttons[@(BTN_CLEAR)] setImage:clearC];
+	[[self displayView] setPasteboardText:[_brain currentValue]];
+	[[self displayView] setExpressionText:[_brain previousExpression]];
 
 	if(identifier == BTN_BACK) {
 		[UIView animateWithDuration:0.25 animations:^{
@@ -292,6 +344,7 @@ static CCCalcViewController *ccCalcController;
 		self.buttonView.hidden = YES;
 	
 	} else {
+		[ccCalcController hideHistory];
 		ccCalcController.view.hidden = YES;
 		ccCalcController.displayView.hidden = YES;
 		self.buttonView.hidden = NO;
@@ -300,7 +353,8 @@ static CCCalcViewController *ccCalcController;
 }
 
 - (CGFloat)preferredExpandedContentHeight {
-	double preferredExpandedSizeRatio = 525.0 / 321.0;
+	//Taller than the stock 525:321 to fit the extra row of buttons
+	double preferredExpandedSizeRatio = 570.0 / 321.0;
 
 	if([self isCalcModule])
 		return self.preferredExpandedContentWidth * preferredExpandedSizeRatio;
@@ -315,7 +369,7 @@ static CCCalcViewController *ccCalcController;
 	%orig;
 }
 
-%new -(bool)isCalcModule {
+%new - (BOOL)isCalcModule {
 	return ([self.module.applicationIdentifier isEqualToString:@"com.apple.calculator"]);
 }
 

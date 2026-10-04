@@ -1,3 +1,5 @@
+#import <UIKit/UIKit.h>
+
 @interface CCCalcPage : UIView {
     CGRect _circleBounds;
     unsigned int _columns;

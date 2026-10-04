@@ -1,7 +1,10 @@
+#import <UIKit/UIKit.h>
+
 @interface CCCalcFunction : NSObject
 
 + (NSDictionary<NSNumber *, CCCalcFunction *> *)functions;
 + (UIImage *)imageFromBundle:(NSString *)imageName;
++ (BOOL)isUsingDegrees;
 - (double)evaluateWithInput:(double)input;
 - (UIImage *)image;
 

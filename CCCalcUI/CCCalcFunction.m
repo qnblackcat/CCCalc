@@ -1,7 +1,8 @@
 #import "CCCalcFunction.h"
 #import "CCCalcButtons.h"
+#import <roothide.h>
 
-static NSBundle *bundle;
+static NSString *bundlePath;
 static TrigUnits trigUnits = Radians;
 
 @implementation CCCalcFunction
@@ -9,7 +10,7 @@ static TrigUnits trigUnits = Radians;
 static NSDictionary<NSNumber *, CCCalcFunction *> *_functions;
 
 + (void)initialize {
-    bundle = [[NSBundle alloc] initWithPath:@"/Library/MobileSubstrate/DynamicLibraries/com.gilesgc.cccalc.bundle"];
+    bundlePath = jbroot(@"/Library/MobileSubstrate/DynamicLibraries/ai.paisseon.cccalc.bundle");
     _functions = @{
         @(BTN_SINE): [[Sine alloc] init],
         @(BTN_COSINE): [[Cosine alloc] init],
@@ -37,17 +38,20 @@ static NSDictionary<NSNumber *, CCCalcFunction *> *_functions;
     return _functions;
 }
 
+//Overridden by each function
 - (double)evaluateWithInput:(double)input {
-    NSLog(@"[CCCalc] evaluateWithInput requires override");
     return 0;
 }
 - (UIImage *)image {
-    NSLog(@"[CCCalc] image requires override");
     return nil;
 }
 
++ (BOOL)isUsingDegrees {
+    return trigUnits == Degrees;
+}
+
 + (UIImage *)imageFromBundle:(NSString *)imageName {
-    UIImage *image = [UIImage imageWithContentsOfFile:[bundle pathForResource:imageName ofType:@"png"]];
+    UIImage *image = [UIImage imageWithContentsOfFile:[bundlePath stringByAppendingPathComponent:[imageName stringByAppendingPathExtension:@"png"]]];
     if(image)
         return image;
 

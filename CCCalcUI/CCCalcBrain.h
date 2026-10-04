@@ -1,22 +1,20 @@
 #import "CCCalcButtons.h"
 
 @interface CCCalcBrain : NSObject {
-    double firstNumber;
-    double secondNumber;
-    double backgroundNumber;
-    unsigned operation;
-    unsigned backgroundOperation;
-    NSString *displayValue;
+    //Alternating numbers and operators, e.g. @[@"1", @"+", @"2", @"×", @(3.5)]
+    //Typed numbers are NSStrings, computed numbers are NSNumbers (or CCCalcLabeledValues
+    //when they come from a function, e.g. 3 shown as "√(9)") so they keep full precision
+    NSMutableArray *tokens;
+    NSString *repeatOperator;
+    NSString *previousExpression;
+    id repeatOperand;
 
-    BOOL willStartSecondValue;
-    BOOL isOnSecondValue;
+    BOOL isLastNumberFinal;
     BOOL isShowingResult;
-    BOOL isBackgroundNumberSet;
-    BOOL previouslyTappedClear;
-    BOOL previouslyTappedAddOrSub;
+    BOOL isShowingError;
 }
 - (void)evaluateTap:(unsigned)identifier;
 - (NSString *)currentValue;
 - (NSString *)currentValueWithCommas;
-- (BOOL)displayingAC;
+- (NSString *)previousExpression;
 @end
