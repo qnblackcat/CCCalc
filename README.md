@@ -1,4 +1,12 @@
 # CCCalc
-An iOS jailbreak tweak that turns your calculator module into a real calculator
+An iOS jailbreak tweak that turns the Calculator module in Control Center into a real calculator. Supports rootful, rootless and roothide.
 
-<img src="https://gilesgc.github.io/repo/depictions/com.gilesgc.cccalc/screenshots/module.PNG" width="300" />
+## Features
+- Whole expressions on one line, with parentheses
+- Result shown under the expression after `=`
+- Backspace and a history of past results (tap to copy)
+- Scientific functions (swipe left)
+- Works on the lock screen
+
+## Credits
+Originally by gilesgc, maintained by paisseon. Licensed under the EPL.

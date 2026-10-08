@@ -1,11 +1,11 @@
 Package: ai.paisseon.cccalc
 Name: CCCalc
 Depends: mobilesubstrate
-Version: 2.1.0
+Version: 2.2.0
 Architecture: iphoneos-arm
 Description: Turn the Calculator CC module into a working calculator
-Maintainer: gilesgc & paisseon
-Author: gilesgc & paisseon
+Maintainer: gilesgc & paisseon & Qn
+Author: gilesgc & paisseon & Qn
 SileoDepiction: https://paisseon.github.io/info/cccalc.json
 Depiction: https://paisseon.github.io/info/cccalc.html
 Icon: https://gilesgc.github.io/repo/depictions/com.gilesgc.cccalc/cccalc-icon.png
