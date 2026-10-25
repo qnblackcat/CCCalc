@@ -2,6 +2,8 @@
 
 static const CGFloat RESULT_FONT_SIZE = 45;
 static const CGFloat EXPRESSION_FONT_SIZE = 18;
+//How far the expression line sits into the result line, as a ratio of its own height. Negative values open a gap between the two
+static const CGFloat EXPRESSION_OVERLAP_RATIO = 0;
 
 @implementation CCCalcLabelView
 
@@ -74,7 +76,7 @@ static const CGFloat EXPRESSION_FONT_SIZE = 18;
 
 	//Line heights include some padding, so the two lines overlap a little to sit snugly together
 	CGFloat expressionHeight = ceil([UIFont systemFontOfSize:EXPRESSION_FONT_SIZE].lineHeight);
-	CGFloat overlap = 6;
+	CGFloat overlap = expressionHeight * EXPRESSION_OVERLAP_RATIO;
 	CGFloat topMargin = 4;
 
 	//Shrink the result font only if the header is too short to fit both lines at 45pt
