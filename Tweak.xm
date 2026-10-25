@@ -1,5 +1,6 @@
 #import "Tweak.h"
 #import "CCCalcUI/CCCalcUI.h"
+#import "CCCalcUI/CCCalcLandscapeViewController.h"
 
 %subclass CCCalcButton : TPNumberPadDarkStyleButton
 //Subclass of the lockscreen keypad buttons
@@ -314,7 +315,27 @@ static int _functionsGrid[5][4] = {
 
 
 
+//Apple draws thin lines between the header, the items and the footer. Their names and layout differ between iOS versions,
+//so they are found by what they look like instead: a hairline that spans most of the module
+static const CGFloat kSeparatorMaxThickness = 2;
+static const CGFloat kSeparatorMinWidthRatio = 0.5;
+
+static NSMapTable<UIView *, NSNumber *> *hiddenSeparators;
+
+static void collectSeparators(UIView *view, UIView *root, UIView *skip, NSMutableArray<UIView *> *found) {
+	for(UIView *subview in view.subviews) {
+		if(subview == skip)
+			continue;
+
+		if(CGRectGetHeight(subview.bounds) <= kSeparatorMaxThickness && CGRectGetWidth(subview.bounds) >= CGRectGetWidth(root.bounds) * kSeparatorMinWidthRatio)
+			[found addObject:subview];
+
+		collectSeparators(subview, root, skip, found);
+	}
+}
+
 static CCCalcViewController *ccCalcController;
+static CCCalcLandscapeViewController *ccCalcLandscapeController;
 
 %hook CCUIAppLauncherViewController
 
@@ -325,6 +346,36 @@ static CCCalcViewController *ccCalcController;
 		return;
 
 	if(expanded) {
+		for(UIView *menuItem in MSHookIvar<UIStackView *>(self, "_menuItemsContainer").arrangedSubviews) {
+			menuItem.hidden = YES;
+		}
+
+		self.buttonView.hidden = YES;
+
+		//Landscape has its own layout that fills the whole module, portrait is untouched
+		if([CCCalcLandscapeViewController isLandscapeForView:self.view]) {
+			if(!ccCalcLandscapeController) {
+				ccCalcLandscapeController = [[CCCalcLandscapeViewController alloc] init];
+				ccCalcLandscapeController.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+			}
+
+			if(ccCalcLandscapeController.parentViewController != self) {
+				[self addChildViewController:ccCalcLandscapeController];
+				[self.view addSubview:ccCalcLandscapeController.view];
+				[ccCalcLandscapeController didMoveToParentViewController:self];
+			}
+
+			ccCalcLandscapeController.view.frame = self.view.bounds;
+			ccCalcLandscapeController.view.hidden = NO;
+			//The lines Apple draws between header, items and footer would run across the landscape layout
+			[self hideSeparators:YES];
+			ccCalcController.view.hidden = YES;
+			ccCalcController.displayView.hidden = YES;
+			return;
+		}
+
+		ccCalcLandscapeController.view.hidden = YES;
+		[self hideSeparators:NO];
 
 		if(!ccCalcController) {
 			ccCalcController = [[CCCalcViewController alloc] initWithPageSize:CGSizeMake(self.preferredExpandedContentWidth, self.preferredExpandedContentHeight - (self.headerHeight + self._footerHeight))];
@@ -335,24 +386,66 @@ static CCCalcViewController *ccCalcController;
 			[ccCalcController.displayView setFrame:CGRectMake(0, 0, self.preferredExpandedContentWidth, self.headerHeight)];
 		}
 
-		for(UIView *menuItem in MSHookIvar<UIStackView *>(self, "_menuItemsContainer").arrangedSubviews) {
-			menuItem.hidden = YES;
-		}
-
 		ccCalcController.view.hidden = NO;
 		ccCalcController.displayView.hidden = NO;
-		self.buttonView.hidden = YES;
-	
 	} else {
 		[ccCalcController hideHistory];
+		[ccCalcLandscapeController reset];
 		ccCalcController.view.hidden = YES;
 		ccCalcController.displayView.hidden = YES;
+		ccCalcLandscapeController.view.hidden = YES;
+		[self hideSeparators:NO];
 		self.buttonView.hidden = NO;
 	}
 
 }
 
+%new - (BOOL)isShowingLandscapeCalc {
+	return [self isCalcModule] && ccCalcLandscapeController && !ccCalcLandscapeController.view.hidden && ccCalcLandscapeController.parentViewController == self;
+}
+
+%new - (void)hideSeparators:(BOOL)hidden {
+	if(!hiddenSeparators)
+		hiddenSeparators = [NSMapTable weakToStrongObjectsMapTable];
+
+	if(hidden) {
+		NSMutableArray<UIView *> *separators = [NSMutableArray array];
+		collectSeparators(self.view, self.view, ccCalcLandscapeController.view, separators);
+
+		for(UIView *separator in separators) {
+			//Remember what Apple had, so portrait gets back exactly that
+			if(![hiddenSeparators objectForKey:separator])
+				[hiddenSeparators setObject:@(separator.hidden) forKey:separator];
+
+			separator.hidden = YES;
+		}
+	} else {
+		for(UIView *separator in [[hiddenSeparators keyEnumerator] allObjects])
+			separator.hidden = [[hiddenSeparators objectForKey:separator] boolValue];
+
+		[hiddenSeparators removeAllObjects];
+	}
+}
+
+//Apple lays the separators out again on every layout pass
+- (void)viewDidLayoutSubviews {
+	%orig;
+
+	if([self isShowingLandscapeCalc])
+		[self hideSeparators:YES];
+}
+
+- (CGFloat)preferredExpandedContentWidth {
+	if([self isCalcModule] && [CCCalcLandscapeViewController isLandscapeForView:self.view])
+		return [CCCalcLandscapeViewController preferredWidth];
+
+	return %orig;
+}
+
 - (CGFloat)preferredExpandedContentHeight {
+	if([self isCalcModule] && [CCCalcLandscapeViewController isLandscapeForView:self.view])
+		return [CCCalcLandscapeViewController preferredHeight];
+
 	//Taller than the stock 525:321 to fit the extra row of buttons
 	double preferredExpandedSizeRatio = 570.0 / 321.0;
 
