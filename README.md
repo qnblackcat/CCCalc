@@ -6,7 +6,8 @@
 
 # CCCalc
 An iOS jailbreak tweak that turns the Calculator module in Control Center into a real calculator. It also has it own CC module.
-Supports rootful, rootless and roothide. 
+Supports rootful, rootless and roothide.
+Compatibile with [ControlCenter18](https://repo.ya-ebal.mom/) by evgeniy558.
 
 ## Features
 - Whole expressions on one line, with parentheses
