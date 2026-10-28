@@ -12,6 +12,10 @@
 + (CGFloat)preferredHeight;
 @end
 
+@interface NSObject (CCCalcContext)
+- (void)openApplication:(NSString *)bundleID completionHandler:(void (^)(BOOL))completion;
+@end
+
 @interface LSApplicationWorkspace : NSObject
 + (instancetype)defaultWorkspace;
 - (BOOL)openApplicationWithBundleID:(NSString *)bundleID;
@@ -91,6 +95,11 @@ static void setScrollViewFrame(UIScrollView *scrollView, CGRect frame) {
 }
 
 - (void)openCalculator {
+	if([self.contentModuleContext respondsToSelector:@selector(openApplication:completionHandler:)]) {
+		[self.contentModuleContext openApplication:@"com.apple.calculator" completionHandler:nil];
+		return;
+	}
+
 	//Off the main thread, the workspace call blocks SpringBoard for seconds otherwise
 	dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
 		[[NSClassFromString(@"LSApplicationWorkspace") defaultWorkspace] openApplicationWithBundleID:@"com.apple.calculator"];
